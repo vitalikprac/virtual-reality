@@ -4,12 +4,15 @@ import fragmentShaderSource from './fragmentShader.glsl';
 import vertexShaderSource from './vertexShader.glsl';
 import { TrackballRotator } from './utils/trackball-rotator.js';
 import { getValueById, renderControls } from './controls.js';
+import { createWebcamTexture, getWebcamEnabled, handleWebcam } from './webcam.js';
 
 let gl;                         // The webgl context.
 let surface;                    // A surface model
+let background;
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
-let texture;
+let texture, webcamTexture;
+let video;
 
 // Constructor
 function Model(name) {
@@ -77,7 +80,7 @@ function draw() {
 
   left = -b * nearClippingDistance / convergenceDistance;
   right = c * nearClippingDistance / convergenceDistance;
-  
+
   const projectionLeft = m4.orthographic(left, right, bottom, top, nearClippingDistance, far);
 
   left = -c * nearClippingDistance / convergenceDistance;
@@ -91,6 +94,26 @@ function draw() {
 
   const matrixMultiplied = m4.multiply(rotateToPointZero, modelView);
 
+  if (getWebcamEnabled()) {
+    const projection = m4.orthographic(0, 1, 0, 1, -1, 1);
+    const noRotation = m4.multiply(rotateToPointZero,
+      [1, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 1,
+        0, 0, 0, 0, 1]);
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, noRotation);
+    gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, projection);
+    gl.bindTexture(gl.TEXTURE_2D, webcamTexture);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      video,
+    );
+    background.Draw();
+  }
+
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.clear(gl.DEPTH_BUFFER_BIT);
 
@@ -101,13 +124,13 @@ function draw() {
   surface.Draw();
 
   gl.clear(gl.DEPTH_BUFFER_BIT);
-  
+
   const matrixRight = m4.multiply(translateToRight, matrixMultiplied);
   gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matrixRight);
   gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, projectionRight);
   gl.colorMask(false, true, true, false);
   surface.Draw();
-  
+
   gl.colorMask(true, true, true, true);
 }
 
@@ -177,6 +200,17 @@ function initGL() {
   surface = new Model('Surface');
   const { vertexList, textureList } = CreateSurfaceData();
   surface.BufferData(vertexList, textureList);
+  background = new Model('Background');
+  background.BufferData([
+      0.0, 0.0, 0.0, 1.0,
+      0.0, 0.0, 1.0, 1.0,
+      0.0, 1.0, 1.0, 0.0,
+      0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+    [
+      1, 1, 0, 1,
+      0, 0, 0, 0,
+      1, 0, 1, 1],
+  );
   LoadTexture();
   gl.enable(gl.DEPTH_TEST);
 }
@@ -222,12 +256,16 @@ function createProgram(gl, vShader, fShader) {
 /**
  * initialization function that will be called when the page has loaded
  */
-function init() {
-  renderControls('#controls')
+async function init() {
+  renderControls('#controls');
   let canvas;
   try {
     canvas = document.getElementById('webglcanvas');
     gl = canvas.getContext('webgl');
+    video = document.createElement('video');
+    video.setAttribute('autoplay', 'true');
+    webcamTexture = createWebcamTexture(gl);
+    handleWebcam(video);
     if (!gl) {
       throw 'Browser does not support WebGL';
     }
