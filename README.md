@@ -1,27 +1,21 @@
-# Graphics work
+# Practical assignment
 ## Author Prachov Vitalii TR21mp
 Visualization of
 Surface of Revolution with Damping Circular Waves using WebGL
 
 ## Live version
 
-[https://vitalikprac.github.io/visual-graphics-1/](https://vitalikprac.github.io/visual-graphics-1/)
-
-## Report
-[Report_Prachov.pdf](https://github.com/vitalikprac/visual-graphics-1/blob/main/Report_Prachov.pdf)
+[https://vitalikprac.github.io/virtual-reality/](https://vitalikprac.github.io/virtual-reality/)
 
 ## Screenshots
 
-![IMG_0977 (1)](https://user-images.githubusercontent.com/42850697/209880619-553446ca-182f-4dd9-aa8d-001137c6b518.gif)
 
+![Demo-3](https://user-images.githubusercontent.com/42850697/231296573-0436ae4f-22a8-49b4-8f47-275da733655c.gif)
 
-![IMG_0977 (2)](https://user-images.githubusercontent.com/42850697/209880671-3f8bb90b-b9b9-40b5-bca4-b0e7aa2686f8.gif)
-
-
-![1](https://user-images.githubusercontent.com/42850697/209880748-2fde4d61-a139-41b6-a99d-d81a5f12d1ab.gif)
-
+![IMAGE 2023-04-12 00:53:10](https://user-images.githubusercontent.com/42850697/231296328-a9d6eef7-1ca1-4def-a8a4-4fa9edfe72b4.jpg)
 
 ## Installation
+
 
 
 ```bash
