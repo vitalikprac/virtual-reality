@@ -290,7 +290,7 @@ async function init() {
 async function LoadImage() {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    image.src = 'brick.png';
+    image.src = 'texture.png';
     image.crossOrigin = 'anonymous';
     image.addEventListener('load', function () {
       resolve(image);
