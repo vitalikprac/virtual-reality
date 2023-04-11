@@ -3,6 +3,7 @@ import './utils/m4.js';
 import fragmentShaderSource from './fragmentShader.glsl';
 import vertexShaderSource from './vertexShader.glsl';
 import { TrackballRotator } from './utils/trackball-rotator.js';
+import { getValueById, renderControls } from './controls.js';
 
 let gl;                         // The webgl context.
 let surface;                    // A surface model
@@ -60,24 +61,29 @@ function draw() {
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  gl.enable(gl.CULL_FACE);
-  gl.enable(gl.DEPTH_TEST);
-  /* Set the values of the projection transformation */
-  let projection = m4.perspective(Math.PI / 8, 1, 8, 12);
+  const eyeSeparation = getValueById('eyeSeparation');
+  const fov = getValueById('fov');
+  const nearClippingDistance = getValueById('nearClippingDistance');
+  const convergenceDistance = getValueById('convergenceDistance');
 
-  const a = ratio * Math.tan(fov / 2.0) * conv;
-  const b = a - eyes / 2;
-  const c = a + eyes / 2;
+  const far = 2000;
+  let left, right, top, bottom;
+  top = nearClippingDistance * Math.tan(fov / 2.0);
+  bottom = -top;
 
-  left = -b * near / conv;
-  right = c * near / conv;
+  const a = Math.tan(fov / 2.0) * convergenceDistance;
+  const b = a - eyeSeparation / 2;
+  const c = a + eyeSeparation / 2;
+
+  left = -b * nearClippingDistance / convergenceDistance;
+  right = c * nearClippingDistance / convergenceDistance;
   
-  const projectionLeft = m4.orthographic(left, right, bottom, top, near, far);
+  const projectionLeft = m4.orthographic(left, right, bottom, top, nearClippingDistance, far);
 
-  left = -c * near / conv;
-  right = b * near / conv;
+  left = -c * nearClippingDistance / convergenceDistance;
+  right = b * nearClippingDistance / convergenceDistance;
 
-  const projectionRight = m4.orthographic(left, right, bottom, top, near, far);
+  const projectionRight = m4.orthographic(left, right, bottom, top, nearClippingDistance, far);
   const modelView = spaceball.getViewMatrix();
   const rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0);
   const translateToLeft = m4.translation(-0.01, 0, -20);
@@ -217,6 +223,7 @@ function createProgram(gl, vShader, fShader) {
  * initialization function that will be called when the page has loaded
  */
 function init() {
+  renderControls('#controls')
   let canvas;
   try {
     canvas = document.getElementById('webglcanvas');

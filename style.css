@@ -10,13 +10,28 @@ body {
   justify-content: center;
   align-items: center;
 }
-
-#app fieldset{
-  margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
+#app {
+  min-width: 600px;
 }
 
-#canvas-holder canvas{
+#controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid black;
+}
 
+#controls > div {
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.title-wrapper{
+  display: flex;
+  justify-content: space-between;
+}
+
+.slider-value {
+  font-weight: bold;
 }
