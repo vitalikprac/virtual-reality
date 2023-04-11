@@ -8,71 +8,36 @@ let gl;                         // The webgl context.
 let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
-let InputCounter = 0.0;
-let ScalePointLocationU = 0.0;
-let ScalePointLocationV = 0.0;
-let ControllerScaleValue = 0.9;
-
-function deg2rad(angle) {
-  return angle * Math.PI / 180;
-}
+let texture;
 
 // Constructor
 function Model(name) {
   this.name = name;
   this.iVertexBuffer = gl.createBuffer();
-  this.iNormalBuffer = gl.createBuffer();
   this.iTextureBuffer = gl.createBuffer();
-  this.iPointVertexBuffer = gl.createBuffer();
   this.count = 0;
 
-  this.BufferData = function (vertices, normals, textCoords) {
-
+  this.BufferData = function (vertices, textureList) {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STREAM_DRAW);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.iNormalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STREAM_DRAW);
-
     gl.bindBuffer(gl.ARRAY_BUFFER, this.iTextureBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textCoords), gl.STREAM_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureList), gl.STREAM_DRAW);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.iPointVertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 0]), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(shProgram.iTextureCoords);
+    gl.vertexAttribPointer(shProgram.iTextureCoords, 2, gl.FLOAT, false, 0, 0);
 
     this.count = vertices.length / 3;
   };
-
   this.Draw = function () {
-    gl.uniform1i(shProgram.iDrawPoint, false);
-
     gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
     gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(shProgram.iAttribVertex);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.iNormalBuffer);
-    gl.vertexAttribPointer(shProgram.iNormalVertex, 3, gl.FLOAT, true, 0, 0);
-    gl.enableVertexAttribArray(shProgram.iNormalVertex);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.iTextureBuffer);
     gl.vertexAttribPointer(shProgram.iTextureCoords, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(shProgram.iTextureCoords);
-
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.count);
-    // Draw point
-
-    gl.uniform1i(shProgram.iDrawPoint, true);
-
-    gl.uniform3fv(shProgram.iScalePointWorldLocation,
-      [CalcX(ScalePointLocationU, ScalePointLocationV), CalcY(ScalePointLocationU, ScalePointLocationV), CalcZ(
-        ScalePointLocationU,
-        ScalePointLocationV)]);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
-    gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(shProgram.iAttribVertex);
-
-    gl.drawArrays(gl.POINTS, 0, 1);
   };
 }
 
@@ -83,24 +48,8 @@ function ShaderProgram(name, program) {
   this.prog = program;
 
   this.iAttribVertex = -1;
-  this.iNormalVertex = -1;
   this.iTextureCoords = -1;
-  this.iColor = -1;
-
-  this.iModelViewProjectionMatrix = -1;
-  this.iWorldMatrix = -1;
-  this.iWorldInverseTranspose = -1;
-
-  this.iLightWorldPosition = -1;
-  this.iLightDirection = -1;
-
-  this.iViewWorldPosition = -1;
-
-  this.iTexture = -1;
-  this.iScalePointLocation = -1;
-  this.iScaleValue = -1;
-  this.iDrawPoint = -1;
-  this.iScalePointWorldLocation = -1;
+  this.iTextureUnit = -1;
 
   this.Use = function () {
     gl.useProgram(this.prog);
@@ -116,33 +65,47 @@ function draw() {
   /* Set the values of the projection transformation */
   let projection = m4.perspective(Math.PI / 8, 1, 8, 12);
 
-  /* Get the view matrix from the SimpleRotator object.*/
-  let modelView = spaceball.getViewMatrix();
+  const a = ratio * Math.tan(fov / 2.0) * conv;
+  const b = a - eyes / 2;
+  const c = a + eyes / 2;
 
-  let WorldMatrix = m4.translation(0, 0, -10);
-  let matAccum1 = m4.multiply(WorldMatrix, modelView);
-  let modelViewProjection = m4.multiply(projection, matAccum1);
+  left = -b * near / conv;
+  right = c * near / conv;
+  
+  const projectionLeft = m4.orthographic(left, right, bottom, top, near, far);
 
-  let worldInverseMatrix = m4.inverse(matAccum1);
-  let worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
-  gl.uniform3fv(shProgram.iViewWorldPosition, [0, 0, 0]); // ?
-  gl.uniform3fv(shProgram.iLightWorldPosition, CalcParabola());
-  gl.uniform3fv(shProgram.iLightDirection, [0, 1, 0]);
-  gl.uniformMatrix4fv(shProgram.iWorldInverseTranspose, false, worldInverseTransposeMatrix);
-  gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
-  gl.uniformMatrix4fv(shProgram.iWorldMatrix, false, matAccum1);
+  left = -c * near / conv;
+  right = b * near / conv;
 
-  gl.uniform4fv(shProgram.iColor, [0.5, 0.5, 0.5, 1]);
+  const projectionRight = m4.orthographic(left, right, bottom, top, near, far);
+  const modelView = spaceball.getViewMatrix();
+  const rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0);
+  const translateToLeft = m4.translation(-0.01, 0, -20);
+  const translateToRight = m4.translation(0.01, 0, -20);
 
-  gl.uniform2fv(shProgram.iScalePointLocation, [ScalePointLocationU / 360.0, ScalePointLocationV / 90.0]);
-  gl.uniform1f(shProgram.iScaleValue, ControllerScaleValue);
+  const matrixMultiplied = m4.multiply(rotateToPointZero, modelView);
 
-  gl.uniform1i(shProgram.iTexture, 0);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
 
+  const matrixLeft = m4.multiply(translateToLeft, matrixMultiplied);
+  gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matrixLeft);
+  gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, projectionLeft);
+  gl.colorMask(true, false, false, false);
   surface.Draw();
+
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+  
+  const matrixRight = m4.multiply(translateToRight, matrixMultiplied);
+  gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matrixRight);
+  gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, projectionRight);
+  gl.colorMask(false, true, true, false);
+  surface.Draw();
+  
+  gl.colorMask(true, true, true, true);
 }
 
-let zm = 4;
+let zm = 1;
 
 function CalcX(r, u) {
   return r * Math.cos(u) / zm;
@@ -157,66 +120,37 @@ function CalcZ(r, u, b, m, a, n, phi) {
   return a * Math.pow(Math.E, -n * r) * Math.sin(w * r + phi) / zm;
 }
 
+
+let b = 6;
+let m = 6;
+let a = 4;
+let n = 0.5;
+let phi = 0;
+const R_MAX = b;
+const U_MAX = 2 * Math.PI;
+const calculateRu = (u, r) => [
+  u / U_MAX,
+  r / R_MAX,
+];
+
+const calculateXYZ = (r, u, b, m, a, n, phi, vertexList, textureList) => {
+  const x = CalcX(r, u);
+  const y = CalcY(r, u);
+  const z = CalcZ(r, u, b, m, a, n, phi);
+  vertexList.push(x, y, z);
+  textureList.push(...calculateRu(u, r));
+};
+
 function CreateSurfaceData() {
   const vertexList = [];
-  const normalsList = [];
-
-  const textCoords = [];
-
-  let DeltaR = 0.0001;
-  let DeltaU = 0.0001;
-
-  let m = 6;
-  let b = 6;
-  let a = 4;
-  let n = 0.5;
-  let phi = 0;
-  for (let r = 0; r <= b; r += 0.001) {
-    for (let u = 0; u < 2 * Math.PI; u += 0.5) {
-      let x = CalcX(r, u);
-      let y = CalcY(r, u);
-      let z = CalcZ(r, u, b, m, a, n, phi);
-      vertexList.push(x, y, z);
-      let DerivativeR = CalcDerivativeR(r, u, DeltaR, b, m, a, n, phi);
-      let DerivativeU = CalcDerivativeU(r, u, DeltaU, b, m, a, n, phi);
-      let result = m4.cross(DerivativeU, DerivativeR);
-      normalsList.push(result[0], result[1], result[2]);
-      textCoords.push(r / b, u / 2 * Math.PI);
+  const textureList = [];
+  for (let r = 0; r <= R_MAX; r += 0.001) {
+    for (let u = 0; u < U_MAX; u += 0.5) {
+      calculateXYZ(r, u, b, m, a, n, phi, vertexList, textureList);
+      calculateXYZ(r + 0.5, u + 0.5, b, m, a, n, phi, vertexList, textureList);
     }
   }
-  return [vertexList, normalsList, textCoords];
-}
-
-function CalcDerivativeR(r, u, uDelta, b, m, a, n, phi) {
-  let x = CalcX(r, u);
-  let y = CalcY(r, u);
-  let z = CalcZ(r, u, b, m, a, n, phi);
-
-  let Dx = CalcX(r + uDelta, u);
-  let Dy = CalcY(r + uDelta, u);
-  let Dz = CalcZ(r + uDelta, u, b, m, a, n, phi);
-
-  let Dxdu = (Dx - x) / deg2rad(uDelta);
-  let Dydu = (Dy - y) / deg2rad(uDelta);
-  let Dzdu = (Dz - z) / deg2rad(uDelta);
-
-  return [Dxdu, Dydu, Dzdu];
-}
-
-function CalcDerivativeU(r, u, vDelta, b, m, a, n, phi) {
-  let x = CalcX(r, u);
-  let y = CalcY(r, u);
-  let z = CalcZ(r, u, b, m, a, n, phi);
-
-  let Dx = CalcX(r, u + vDelta);
-  let Dy = CalcY(r, u + vDelta);
-  let Dz = CalcZ(r, u + vDelta, b, m, a, n, phi);
-
-  let Dxdv = (Dx - x) / deg2rad(vDelta);
-  let Dydv = (Dy - y) / deg2rad(vDelta);
-  let Dzdv = (Dz - z) / deg2rad(vDelta);
-
-  return [Dxdv, Dydv, Dzdv];
+  return { vertexList, textureList };
 }
 
 
@@ -228,32 +162,22 @@ function initGL() {
   shProgram.Use();
 
   shProgram.iAttribVertex = gl.getAttribLocation(prog, 'vertex');
-  shProgram.iNormalVertex = gl.getAttribLocation(prog, 'normal');
-  shProgram.iTextureCoords = gl.getAttribLocation(prog, 'textcoord');
+  shProgram.iModelViewMatrix = gl.getUniformLocation(prog, 'ModelViewMatrix');
+  shProgram.iProjectionMatrix = gl.getUniformLocation(prog, 'ProjectionMatrix');
 
-  shProgram.iColor = gl.getUniformLocation(prog, 'color');
-
-  shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, 'ModelViewProjectionMatrix');
-  shProgram.iWorldInverseTranspose = gl.getUniformLocation(prog, 'WorldInverseTranspose');
-  shProgram.iWorldMatrix = gl.getUniformLocation(prog, 'WorldMatrix');
-
-  shProgram.iLightWorldPosition = gl.getUniformLocation(prog, 'LightWorldPosition');
-  shProgram.iLightDirection = gl.getUniformLocation(prog, 'LightDirection');
-
-  shProgram.iViewWorldPosition = gl.getUniformLocation(prog, 'ViewWorldPosition');
-
-  shProgram.iTexture = gl.getUniformLocation(prog, 'u_texture');
-
-  shProgram.iScalePointLocation = gl.getUniformLocation(prog, 'ScalePointLocation');
-  shProgram.iScaleValue = gl.getUniformLocation(prog, 'ScaleValue');
-
-  shProgram.iDrawPoint = gl.getUniformLocation(prog, 'bDrawpoint');
-
-  shProgram.iScalePointWorldLocation = gl.getUniformLocation(prog, 'ScalePointWorldLocation');
+  shProgram.iTextureCoords = gl.getAttribLocation(prog, 'textureCoords');
+  shProgram.iTextureUnit = gl.getUniformLocation(prog, 'textureUnit');
 
   surface = new Model('Surface');
-  let SurfaceData = CreateSurfaceData();
-  surface.BufferData(SurfaceData[0], SurfaceData[1], SurfaceData[2]);
+  const { vertexList, textureList } = CreateSurfaceData();
+  surface.BufferData(vertexList, textureList);
+  LoadTexture();
+  gl.enable(gl.DEPTH_TEST);
+}
+
+function infiniteDraw() {
+  draw();
+  window.requestAnimationFrame(infiniteDraw);
 }
 
 
@@ -315,105 +239,28 @@ function init() {
 
   spaceball = new TrackballRotator(canvas, draw, 0);
 
-  LoadTexture();
+  infiniteDraw();
 }
 
-
-const processKeys = [
-  {
-    keys: ['ArrowLeft'],
-    func: () => {
-      InputCounter -= 0.05;
-      draw();
-    },
-  },
-  {
-    keys: ['ArrowRight'],
-    func: () => {
-      InputCounter -= 0.05;
-      draw();
-    },
-  },
-  {
-    keys: ['W','w'],
-    func: () => {
-      ScalePointLocationV -= 5.0;
-      ScalePointLocationV = clamp(ScalePointLocationV, 0.0, 90);
-    }
-  },
-  {
-    keys: ['S','s'],
-    func: () => {
-      ScalePointLocationV += 5.0;
-      ScalePointLocationV = clamp(ScalePointLocationV, 0.0, 90);
-    }
-  },
-  {
-    keys: ['A', 'a'],
-    func: () => {
-      ScalePointLocationU -= 5.0;
-      ScalePointLocationU = clamp(ScalePointLocationU, 0.0, 360);
-    }
-  },
-  {
-    keys: ['D', 'd'],
-    func: () => {
-      ScalePointLocationU += 5.0;
-      ScalePointLocationU = clamp(ScalePointLocationU, 0.0, 360);
-    }
-  },
-  {
-    keys: ['Q', 'q'],
-    func: () => {
-      ControllerScaleValue += 0.05;
-      ControllerScaleValue = clamp(ControllerScaleValue, 0.5, 2.0);
-    }
-  },
-  {
-    keys: ['E', 'e'],
-    func: () => {
-      ControllerScaleValue -= 0.05;
-      ControllerScaleValue = clamp(ControllerScaleValue, 0.5, 2.0);
-    }
-  }];
-
-window.addEventListener('keydown', function (event) {
-  const found = processKeys.find((key) => key.keys.includes(event.key));
-  if (found) {
-    found.func();
-    draw(); 
-  }
-});
-
-function CalcParabola() {
-  const TParam = Math.sin(InputCounter) * 1.2;
-  return [TParam, -6, -10 + (TParam * TParam)];
-}
-
-function LoadImage(texture) {
-  const image = new Image();
-  image.src = 'texture.png';
-  image.addEventListener('load', function () {
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    draw();
+async function LoadImage() {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.src = 'brick.png';
+    image.crossOrigin = 'anonymous';
+    image.addEventListener('load', function () {
+      resolve(image);
+    });
   });
 }
 
-function LoadTexture() {
-  const texture = gl.createTexture();
+const LoadTexture = async () => {
+  const image = await LoadImage();
+  texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
-  LoadImage(texture)
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
-}
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+};
 
 
 document.addEventListener('DOMContentLoaded', init);
