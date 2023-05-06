@@ -3,16 +3,16 @@
 Visualization of
 Surface of Revolution with Damping Circular Waves using WebGL
 
+**Implemented surface rotation based on software orientation sensor readings.**
+
 ## Live version
 
 [https://vitalikprac.github.io/virtual-reality/](https://vitalikprac.github.io/virtual-reality/)
 
 ## Screenshots
 
+![](https://github.com/vitalikprac/virtual-reality/blob/PA-2/example-rotation.gif)
 
-![Demo-3](https://user-images.githubusercontent.com/42850697/231296573-0436ae4f-22a8-49b4-8f47-275da733655c.gif)
-
-![IMAGE 2023-04-12 00:53:10](https://user-images.githubusercontent.com/42850697/231296328-a9d6eef7-1ca1-4def-a8a4-4fa9edfe72b4.jpg)
 
 ## Installation
 
