@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <link href="/virtual-reality/vite.svg" rel="icon" type="image/svg+xml"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Virtual Reality PA#1</title>
-  <script type="module" crossorigin src="/virtual-reality/assets/index.9b4f4962.js"></script>
-  <link rel="stylesheet" href="/virtual-reality/assets/index.8c8a257d.css">
+  <script type="module" crossorigin src="/virtual-reality/assets/index.2ef5769d.js"></script>
+  <link rel="stylesheet" href="/virtual-reality/assets/index.4a4d4026.css">
 </head>
 <body>
 <div id="app">
@@ -16,6 +16,12 @@
   <div class="webcam-wrapper">
     <label for="webcam">Webcam enabled</label>
     <input id="webcam" type="checkbox" />
+  </div>
+  <div class="device-orientation-wrapper">
+    <label for="device-orientation">Device orientation</label>
+    <input id="device-orientation" type="checkbox"/>
+    <button id="request-orientation">Request orientation</button>
+    <mark>It works only on IOS</mark>
   </div>
 </div>
 <div id="canvas-holder">
