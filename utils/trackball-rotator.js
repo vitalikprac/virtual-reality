@@ -39,6 +39,8 @@
  *    Cannot be a multiple of viewpointDirection.  This is just the initial value for
  *    viewUp; it will be modified by rotation.
  */
+
+var touchStarted = false;
 export function TrackballRotator(canvas, callback, viewDistance, viewpointDirection, viewUp) {
   var unitx = new Array(3);
   var unity = new Array(3);

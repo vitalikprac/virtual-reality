@@ -5,14 +5,33 @@ html, body{
 body {
   background-color: #e8e9eb;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  padding: 1rem;
 }
 #app {
+  max-width: 50%;
+  margin: 0 auto;
   min-width: 600px;
 }
+#canvas-holder {
+  margin: 0 auto;
+  max-width: 600px;
+}
+
+@media (max-width: 768px) {
+  #app {
+    width: 100%;
+    min-width: 100%;
+  }
+  
+  #webglcanvas {
+    width: 100%;
+    aspect-ratio: 1;
+  }
+  
+  
+}
+
+
 
 #controls {
   display: flex;
@@ -36,10 +55,17 @@ body {
   font-weight: bold;
 }
 
-.webcam-wrapper {
+.webcam-wrapper, .device-orientation-wrapper {
   border: 1px solid black;
+  border-top: 0;
   padding: 0.25rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+#request-orientation {
+  padding: 0.5rem;
+  color: white;
+  background-color: green;
 }

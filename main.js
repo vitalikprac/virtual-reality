@@ -5,6 +5,7 @@ import vertexShaderSource from './vertexShader.glsl';
 import { TrackballRotator } from './utils/trackball-rotator.js';
 import { getValueById, renderControls } from './controls.js';
 import { createWebcamTexture, getWebcamEnabled, handleWebcam } from './webcam.js';
+import { handleDeviceOrientation, latestEvent } from './deviceOrientation.js';
 
 let gl;                         // The webgl context.
 let surface;                    // A surface model
@@ -13,6 +14,7 @@ let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
 let texture, webcamTexture;
 let video;
+let deviceOrientation;
 
 // Constructor
 function Model(name) {
@@ -87,12 +89,25 @@ function draw() {
   right = b * nearClippingDistance / convergenceDistance;
 
   const projectionRight = m4.orthographic(left, right, bottom, top, nearClippingDistance, far);
-  const modelView = spaceball.getViewMatrix();
+  
+  let modelView;
+  if (deviceOrientation.checked && latestEvent.alpha && latestEvent.beta && latestEvent.gamma) {
+    const alphaRadians = latestEvent.alpha * (Math.PI / 180);
+    const betaRadians = latestEvent.beta * (Math.PI / 180);
+    const gammaRadians = latestEvent.gamma * (Math.PI / 180);
+    const rotationZ = m4.axisRotation([0, 0, 1], alphaRadians);
+    const rotationX = m4.axisRotation([1, 0, 0], -betaRadians);
+    const rotationY = m4.axisRotation([0, 1, 0], gammaRadians);
+    const rotation = m4.multiply(m4.multiply(rotationX, rotationY), rotationZ);
+    const translation = m4.translation(0, 0, -2);
+    modelView = m4.multiply(rotation, translation);
+  } else {
+    modelView = spaceball.getViewMatrix();
+  }
+  
   const rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0);
   const translateToLeft = m4.translation(-0.01, 0, -20);
   const translateToRight = m4.translation(0.01, 0, -20);
-
-  const matrixMultiplied = m4.multiply(rotateToPointZero, modelView);
 
   if (getWebcamEnabled()) {
     const projection = m4.orthographic(0, 1, 0, 1, -1, 1);
@@ -117,7 +132,7 @@ function draw() {
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.clear(gl.DEPTH_BUFFER_BIT);
 
-  const matrixLeft = m4.multiply(translateToLeft, matrixMultiplied);
+  const matrixLeft = m4.multiply(translateToLeft, modelView);
   gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matrixLeft);
   gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, projectionLeft);
   gl.colorMask(true, false, false, false);
@@ -125,7 +140,7 @@ function draw() {
 
   gl.clear(gl.DEPTH_BUFFER_BIT);
 
-  const matrixRight = m4.multiply(translateToRight, matrixMultiplied);
+  const matrixRight = m4.multiply(translateToRight, modelView);
   gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matrixRight);
   gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, projectionRight);
   gl.colorMask(false, true, true, false);
@@ -253,6 +268,13 @@ function createProgram(gl, vShader, fShader) {
 }
 
 
+const handleRequestButton = () => {
+  const button = document.getElementById('request-orientation');
+  button.addEventListener('click', () => {
+    handleDeviceOrientation();
+  });
+};
+
 /**
  * initialization function that will be called when the page has loaded
  */
@@ -264,8 +286,10 @@ async function init() {
     gl = canvas.getContext('webgl');
     video = document.createElement('video');
     video.setAttribute('autoplay', 'true');
+    deviceOrientation = document.getElementById('device-orientation');
     webcamTexture = createWebcamTexture(gl);
     handleWebcam(video);
+    handleRequestButton();
     if (!gl) {
       throw 'Browser does not support WebGL';
     }
