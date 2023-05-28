@@ -69,3 +69,7 @@ body {
   color: white;
   background-color: green;
 }
+
+#audio {
+  padding: 0.5rem;
+}

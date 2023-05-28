@@ -6,6 +6,9 @@ import { TrackballRotator } from './utils/trackball-rotator.js';
 import { getValueById, renderControls } from './controls.js';
 import { createWebcamTexture, getWebcamEnabled, handleWebcam } from './webcam.js';
 import { handleDeviceOrientation, latestEvent } from './deviceOrientation.js';
+import { loadAudio } from "./audio.js";
+
+const deg2rad = (deg) => deg * Math.PI / 180;
 
 let gl;                         // The webgl context.
 let surface;                    // A surface model
@@ -14,7 +17,12 @@ let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
 let texture, webcamTexture;
 let video;
+let audio;
+let panner;
+let sphere;
 let deviceOrientation;
+let step = 0;
+let sphereCoordinates = [0, 0, 0]
 
 // Constructor
 function Model(name) {
@@ -45,6 +53,11 @@ function Model(name) {
     gl.enableVertexAttribArray(shProgram.iTextureCoords);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.count);
   };
+  
+  this.DrawSphere = function () {
+    this.Draw();
+    gl.drawArrays(gl.LINE_STRIP, 0, this.count);
+  }
 }
 
 // Constructor
@@ -63,7 +76,7 @@ function ShaderProgram(name, program) {
 }
 
 function draw() {
-  gl.clearColor(0, 0, 0, 1);
+  gl.clearColor(1, 1, 1, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   const eyeSeparation = getValueById('eyeSeparation');
@@ -93,17 +106,12 @@ function draw() {
   let modelView;
   if (deviceOrientation.checked && latestEvent.alpha && latestEvent.beta && latestEvent.gamma) {
     const alphaRadians = latestEvent.alpha * (Math.PI / 180);
-    const betaRadians = latestEvent.beta * (Math.PI / 180);
-    const gammaRadians = latestEvent.gamma * (Math.PI / 180);
-    const rotationZ = m4.axisRotation([0, 0, 1], alphaRadians);
-    const rotationX = m4.axisRotation([1, 0, 0], -betaRadians);
-    const rotationY = m4.axisRotation([0, 1, 0], gammaRadians);
-    const rotation = m4.multiply(m4.multiply(rotationX, rotationY), rotationZ);
-    const translation = m4.translation(0, 0, -2);
-    modelView = m4.multiply(rotation, translation);
+    moveCircleSphere(alphaRadians + Math.PI / 2);
   } else {
-    modelView = spaceball.getViewMatrix();
+    step += 0.02;
+    moveCircleSphere(step);
   }
+  modelView = spaceball.getViewMatrix();
   
   const rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0);
   const translateToLeft = m4.translation(-0.01, 0, -20);
@@ -128,6 +136,15 @@ function draw() {
     );
     background.Draw();
   }
+  
+  panner?.setPosition(...sphereCoordinates);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  const projection = m4.perspective(deg2rad(90), 1, 0.1, 100);
+  const translationSphere = m4.translation(...sphereCoordinates);
+  const modelViewMatrix = m4.multiply(translationSphere, modelView);
+  gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, projection);
+  gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, modelViewMatrix);
+  sphere.DrawSphere();
 
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -198,6 +215,35 @@ function CreateSurfaceData() {
 }
 
 
+function CreateSphereData(multiplier, iSegments, jSegments) {
+  const vertexList = [];
+  const textureList = [];
+
+  for (let i = 0; i <= iSegments; i++) {
+    const theta = i * Math.PI / iSegments;
+    const sinTheta = Math.sin(theta);
+    const cosTheta = Math.cos(theta);
+
+    for (let j = 0; j <= jSegments; j++) {
+      const phi = j * 2 * Math.PI / jSegments;
+      const sinPhi = Math.sin(phi);
+      const cosPhi = Math.cos(phi);
+      const x = multiplier * cosPhi * sinTheta;
+      const y = multiplier * cosTheta;
+      const z = multiplier * sinPhi * sinTheta;
+
+      vertexList.push(x, y, z)
+
+      const u = 1 - (j / jSegments);
+      const v = 1 - (i / iSegments);
+      textureList.push(u, v);
+    }
+  }
+
+  return { vertexList, textureList };
+}
+
+
 /* Initialize the WebGL context. Called from init() */
 function initGL() {
   let prog = createProgram(gl, vertexShaderSource, fragmentShaderSource);
@@ -226,6 +272,11 @@ function initGL() {
       0, 0, 0, 0,
       1, 0, 1, 1],
   );
+  
+  const sphereData = CreateSphereData(0.5, 500, 500);
+  sphere = new Model('Sphere');
+  sphere.BufferData(sphereData.vertexList, sphereData.textureList);
+
   LoadTexture();
   gl.enable(gl.DEPTH_TEST);
 }
@@ -275,6 +326,19 @@ const handleRequestButton = () => {
   });
 };
 
+const handleAudioButton = () => {
+  const button = document.getElementById('audio');
+  button.addEventListener('click', async (e) => {
+    [audio, panner] = await loadAudio('audio.mp3').catch(console.error);
+  })
+}
+
+
+function moveCircleSphere(angle, offsetX = 0, offsetZ = -5, radius = 4) {
+  sphereCoordinates[0] = offsetX + Math.cos(angle) * radius;
+  sphereCoordinates[2] = offsetZ + Math.sin(angle) * radius;
+}
+
 /**
  * initialization function that will be called when the page has loaded
  */
@@ -290,6 +354,7 @@ async function init() {
     webcamTexture = createWebcamTexture(gl);
     handleWebcam(video);
     handleRequestButton();
+    handleAudioButton();
     if (!gl) {
       throw 'Browser does not support WebGL';
     }
