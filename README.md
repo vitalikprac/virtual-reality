@@ -3,7 +3,7 @@
 Visualization of
 Surface of Revolution with Damping Circular Waves using WebGL
 
-**Implemented surface rotation based on software orientation sensor readings.**
+**Implement spatial audio through WebAudio HTML5 API.**
 
 ## Live version
 
@@ -11,7 +11,7 @@ Surface of Revolution with Damping Circular Waves using WebGL
 
 ## Screenshots
 
-![](https://github.com/vitalikprac/virtual-reality/blob/PA-2/example-rotation.gif)
+https://github.com/vitalikprac/virtual-reality/assets/42850697/c7ea5c57-84e2-4125-a543-53b5cfc3ffa3
 
 
 ## Installation
