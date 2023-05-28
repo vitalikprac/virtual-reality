@@ -9,6 +9,11 @@ Surface of Revolution with Damping Circular Waves using WebGL
 
 [https://vitalikprac.github.io/virtual-reality/](https://vitalikprac.github.io/virtual-reality/)
 
+
+## Report
+
+[Report_Prachov.pdf](https://github.com/vitalikprac/virtual-reality/blob/CGW/Report_Prachov.pdf)
+
 ## Screenshots
 
 https://github.com/vitalikprac/virtual-reality/assets/42850697/c7ea5c57-84e2-4125-a543-53b5cfc3ffa3
