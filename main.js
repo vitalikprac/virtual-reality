@@ -6,7 +6,7 @@ import { TrackballRotator } from './utils/trackball-rotator.js';
 import { getValueById, renderControls } from './controls.js';
 import { createWebcamTexture, getWebcamEnabled, handleWebcam } from './webcam.js';
 import { handleDeviceOrientation, latestEvent } from './deviceOrientation.js';
-import { loadAudio } from "./audio.js";
+import { handleFilterChange, loadAudio } from "./audio.js";
 
 const deg2rad = (deg) => deg * Math.PI / 180;
 
@@ -355,6 +355,7 @@ async function init() {
     handleWebcam(video);
     handleRequestButton();
     handleAudioButton();
+    handleFilterChange();
     if (!gl) {
       throw 'Browser does not support WebGL';
     }

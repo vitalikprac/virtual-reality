@@ -55,7 +55,7 @@ body {
   font-weight: bold;
 }
 
-.webcam-wrapper, .device-orientation-wrapper {
+.webcam-wrapper, .device-orientation-wrapper, .filter-wrapper {
   border: 1px solid black;
   border-top: 0;
   padding: 0.25rem;

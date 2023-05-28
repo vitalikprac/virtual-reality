@@ -10,8 +10,12 @@ export const getSoundBuffer = (soundFileName) => {
   })
 }
 
+let panner;
+let filter;
+let ctx;
+
 export const loadAudio = async (soundFileName) => {
-  const ctx = new AudioContext();
+  ctx = new AudioContext();
   const mainVolume = ctx.createGain();
   mainVolume.connect(ctx.destination);
   const sound = {
@@ -32,8 +36,8 @@ export const loadAudio = async (soundFileName) => {
     console.error(e)
   }
 
-  const panner = ctx.createPanner();
-  const filter = ctx.createBiquadFilter();
+  panner = ctx.createPanner();
+  filter = ctx.createBiquadFilter();
 
   sound.source.connect(panner);
   panner.connect(filter);
@@ -46,4 +50,18 @@ export const loadAudio = async (soundFileName) => {
 
 
   return [sound, panner];
+}
+
+export const handleFilterChange = () => {
+  const filterElement = document.getElementById('filter');
+  filterElement.addEventListener('change', async (e) => {
+    if (filterElement.checked) {
+      panner?.disconnect()
+      panner?.connect?.(filter)
+      filter?.connect?.(ctx.destination)
+    } else {
+      panner?.disconnect()
+      panner?.connect?.(ctx.destination)
+    }
+  });
 }
